@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>證件浮水印工具</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3352;
+    --accent: #4f7fff;
+    --accent2: #7c5cfc;
+    --danger: #ff4f4f;
+    --text: #e8eaf6;
+    --text2: #8890b5;
+    --success: #3dd68c;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+
+  /* Header */
+  header {
+    max-width: 880px;
+    margin: 0 auto 32px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  header h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.02em; }
+  header p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .badge {
+    margin-left: auto;
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    background: rgba(61,214,140,0.12);
+    color: var(--success);
+    border: 1px solid rgba(61,214,140,0.3);
+    padding: 4px 10px; border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  .main { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+  /* Panel */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 14px 20px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-size: 13px; font-weight: 600;
+    color: var(--text2); letter-spacing: 0.08em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-header span { font-size: 16px; }
+  .panel-body { padding: 20px; }
+
+  /* Grid layout */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
+
+  /* Form controls */
+  label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%; background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    padding: 10px 14px; font-size: 14px;
+    font-family: 'Noto Sans TC', sans-serif;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  input[type="color"] {
+    width: 48px; height: 38px; padding: 2px 4px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); cursor: pointer;
+  }
+  .color-row { display: flex; gap: 10px; align-items: flex-end; }
+  .color-row input[type="text"] { flex: 1; }
+
+  /* Range slider */
+  input[type="range"] {
+    width: 100%; accent-color: var(--accent);
+    height: 4px; cursor: pointer;
+  }
+  .range-row { display: flex; align-items: center; gap: 12px; }
+  .range-row input[type="range"] { flex: 1; }
+  .range-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; color: var(--accent);
+    min-width: 36px; text-align: right;
+  }
+
+  /* Tabs for front/back */
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--text2);
+    font-size: 13px; font-family: 'Noto Sans TC', sans-serif;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background: var(--accent); border-color: var(--accent);
+    color: #fff; font-weight: 600;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px; padding: 32px 20px;
+    text-align: center; cursor: pointer;
+    transition: all 0.2s; position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(79,127,255,0.06); }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-icon { font-size: 32px; margin-bottom: 8px; }
+  .upload-zone p { font-size: 13px; color: var(--text2); }
+  .upload-zone strong { color: var(--text); }
+
+  /* Preview */
+  .preview-wrap {
+    position: relative; background: #000;
+    border-radius: 10px; overflow: hidden;
+    min-height: 120px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .preview-wrap canvas { max-width: 100%; display: block; border-radius: 10px; }
+  .preview-placeholder {
+    color: var(--text2); font-size: 13px; padding: 40px;
+    text-align: center; display: flex; flex-direction: column; gap: 8px;
+  }
+  .preview-placeholder .ph-icon { font-size: 28px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 20px; border-radius: 8px; border: none;
+    font-size: 14px; font-family: 'Noto Sans TC', sans-serif;
+    font-weight: 600; cursor: pointer; transition: all 0.18s;
+    text-decoration: none;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #3d6ee8; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-success { background: var(--success); color: #0f1117; }
+  .btn-success:hover { background: #30c07e; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* Position grid selector */
+  .pos-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    max-width: 180px;
+  }
+  .pos-btn {
+    aspect-ratio: 1; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg); cursor: pointer; transition: all 0.15s;
+    font-size: 10px; color: var(--text2);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pos-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pos-btn:hover:not(.active) { border-color: var(--accent); }
+
+  /* Security note */
+  .security-note {
+    background: rgba(61,214,140,0.07);
+    border: 1px solid rgba(61,214,140,0.2);
+    border-radius: 10px; padding: 14px 18px;
+    display: flex; gap: 12px; align-items: flex-start;
+    font-size: 13px; color: #a8f0ce;
+  }
+  .security-note .icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  .field-group { display: flex; flex-direction: column; gap: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🛡️</div>
+  <div>
+    <h1>證件浮水印工具</h1>
+    <p>本機端處理・圖片不上傳・完全離線</p>
+  </div>
+  <div class="badge">🔒 100% 本機</div>
+</header>
+
+<div class="main">
+
+  <!-- Security notice -->
+  <div class="security-note">
+    <div class="icon">✅</div>
+    <div>所有圖片處理均在您的瀏覽器內完成，<strong>圖片資料不會傳送至任何伺服器</strong>。請直接用瀏覽器開啟此 .html 檔案即可離線使用。</div>
+  </div>
+
+  <!-- Watermark settings -->
+  <div class="panel">
+    <div class="panel-header"><span>⚙️</span>浮水印設定</div>
+    <div class="panel-body">
+      <div class="field-group">
+
+        <div>
+          <label>浮水印文字（可多行，用 Enter 分行）</label>
+          <textarea id="wmText" rows="3" placeholder="例：申請中華電信門號專用&#10;Weber&#10;2025/04/30">申請門號專用</textarea>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="checkbox" id="autoDate" checked style="width:auto; cursor:pointer;">
+          <label for="autoDate" style="margin:0; cursor:pointer; color:var(--text);">自動附加今天日期（<span id="todayStr"></span>）</label>
+        </div>
+
+        <div class="grid2">
+          <div>
+            <label>浮水印模式</label>
+            <select id="wmMode">
+              <option value="tile">斜線鋪滿（推薦）</option>
+              <option value="single">單行指定位置</option>
+              <option value="both">斜線鋪滿 + 位置標記</option>
+            </select>
+          </div>
+          <div>
+            <label>字體大小</label>
+            <div class="range-row">
+              <input type="range" id="fontSize" min="14" max="80" value="32">
+              <div class="range-val" id="fontSizeVal">32</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div>
+            <label>顏色</label>
+            <div class="color-row">
+              <input type="color" id="wmColor" value="#ff2222">
+              <input type="text" id="wmColorHex" value="#ff2222" placeholder="#ff2222" style="font-family:'JetBrains Mono',monospace;">
+            </div>
+          </div>
+          <div>
+            <label>透明度</label>
+            <div class="range-row">
+              <input type="range" id="wmOpacity" min="5" max="80" value="35">
+              <div class="range-val" id="opacityVal">35%</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="posSection">
+          <label>單行位置（浮水印模式為「單行」時有效）</label>
+          <div class="pos-grid" id="posGrid">
+            <button class="pos-btn" data-pos="tl">↖</button>
+            <button class="pos-btn" data-pos="tc">↑</button>
+            <button class="pos-btn" data-pos="tr">↗</button>
+            <button class="pos-btn" data-pos="ml">←</button>
+            <button class="pos-btn active" data-pos="mc">✦</button>
+            <button class="pos-btn" data-pos="mr">→</button>
+            <button class="pos-btn" data-pos="bl">↙</button>
+            <button class="pos-btn" data-pos="bc">↓</button>
+            <button class="pos-btn" data-pos="br">↘</button>
+          </div>
+        </div>
+
+        <div>
+          <label>輸出格式</label>
+          <div style="display:flex; gap:16px; margin-top:4px;">
+            <label style="color:var(--text); cursor:pointer; display:flex; align-items:center; gap:6px; margin:0;">
+              <input type="radio" name="fmt" value="png" checked style="width:auto;"> PNG（無損，推薦用於清晰度要求高）
+            </label>
+            <label style="color:var(--text); cursor:pointer; display:flex; align-items:center; gap:6px; margin:0;">
+              <input type="radio" name="fmt" value="jpg" style="width:auto;"> JPG（壓縮較小）
+            </label>
+          </div>
+        </div>
+
+        <div id="jpgQualityRow" style="display:none;">
+          <label>JPG 品質</label>
+          <div class="range-row">
+            <input type="range" id="jpgQuality" min="60" max="100" value="90">
+            <div class="range-val" id="jpgQualityVal">90%</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload & process -->
+  <div class="panel">
+    <div class="panel-header"><span>📄</span>上傳證件</div>
+    <div class="panel-body">
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="front">正面</button>
+        <button class="tab-btn" data-tab="back">反面</button>
+      </div>
+
+      <!-- Front tab -->
+      <div class="tab-panel active" id="tab-front">
+        <div class="upload-zone" id="dropFront">
+          <input type="file" id="fileFront" accept="image/*">
+          <div class="upload-icon">🪪</div>
+          <p><strong>點擊選擇</strong>或拖曳圖片到此處</p>
+          <p style="margin-top:4px; font-size:11px;">支援 JPG、PNG、HEIC 等常見格式</p>
+        </div>
+        <div style="margin-top:14px;">
+          <div class="preview-wrap" id="previewFrontWrap">
+            <div class="preview-placeholder"><div class="ph-icon">🖼️</div><div>預覽將顯示於此</div></div>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn btn-primary" onclick="processImage('front')">⚡ 加入浮水印（正面）</button>
+          <a class="btn btn-success" id="dlFront" style="display:none;" download>⬇ 下載正面</a>
+          <button class="btn btn-secondary" onclick="clearImg('front')" id="clrFront" style="display:none;">✕ 清除</button>
+        </div>
+      </div>
+
+      <!-- Back tab -->
+      <div class="tab-panel" id="tab-back">
+        <div class="upload-zone" id="dropBack">
+          <input type="file" id="fileBack" accept="image/*">
+          <div class="upload-icon">🪪</div>
+          <p><strong>點擊選擇</strong>或拖曳圖片到此處</p>
+          <p style="margin-top:4px; font-size:11px;">支援 JPG、PNG、HEIC 等常見格式</p>
+        </div>
+        <div style="margin-top:14px;">
+          <div class="preview-wrap" id="previewBackWrap">
+            <div class="preview-placeholder"><div class="ph-icon">🖼️</div><div>預覽將顯示於此</div></div>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn btn-primary" onclick="processImage('back')">⚡ 加入浮水印（反面）</button>
+          <a class="btn btn-success" id="dlBack" style="display:none;" download>⬇ 下載反面</a>
+          <button class="btn btn-secondary" onclick="clearImg('back')" id="clrBack" style="display:none;">✕ 清除</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Today date ──────────────────────────────
+const today = new Date();
+const todayStr = `${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
+document.getElementById('todayStr').textContent = todayStr;
+
+// ── Tab switching ────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Position selector ───────────────────────
+let selectedPos = 'mc';
+document.querySelectorAll('.pos-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedPos = btn.dataset.pos;
+  });
+});
+
+// ── Range / color sync ───────────────────────
+const fontSize = document.getElementById('fontSize');
+const fontSizeVal = document.getElementById('fontSizeVal');
+fontSize.addEventListener('input', () => { fontSizeVal.textContent = fontSize.value; });
+
+const wmOpacity = document.getElementById('wmOpacity');
+const opacityVal = document.getElementById('opacityVal');
+wmOpacity.addEventListener('input', () => { opacityVal.textContent = wmOpacity.value + '%'; });
+
+const jpgQuality = document.getElementById('jpgQuality');
+const jpgQualityVal = document.getElementById('jpgQualityVal');
+jpgQuality.addEventListener('input', () => { jpgQualityVal.textContent = jpgQuality.value + '%'; });
+
+// Format toggle
+document.querySelectorAll('input[name="fmt"]').forEach(r => {
+  r.addEventListener('change', () => {
+    document.getElementById('jpgQualityRow').style.display =
+      document.querySelector('input[name="fmt"]:checked').value === 'jpg' ? 'block' : 'none';
+  });
+});
+
+// Color sync
+const wmColor = document.getElementById('wmColor');
+const wmColorHex = document.getElementById('wmColorHex');
+wmColor.addEventListener('input', () => { wmColorHex.value = wmColor.value; });
+wmColorHex.addEventListener('input', () => {
+  if (/^#[0-9a-fA-F]{6}$/.test(wmColorHex.value)) wmColor.value = wmColorHex.value;
+});
+
+// ── File storage ─────────────────────────────
+const imageData = { front: null, back: null };
+
+function loadImage(side, file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    imageData[side] = e.target.result;
+    showPreview(side, e.target.result);
+    document.getElementById('clr' + cap(side)).style.display = 'inline-flex';
+  };
+  reader.readAsDataURL(file);
+}
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+['front','back'].forEach(side => {
+  const input = document.getElementById('file' + cap(side));
+  const drop  = document.getElementById('drop' + cap(side));
+  input.addEventListener('change', e => loadImage(side, e.target.files[0]));
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault(); drop.classList.remove('drag');
+    loadImage(side, e.dataTransfer.files[0]);
+  });
+});
+
+function showPreview(side, src) {
+  const wrap = document.getElementById('preview' + cap(side) + 'Wrap');
+  wrap.innerHTML = '';
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.maxWidth = '100%';
+  img.style.borderRadius = '10px';
+  wrap.appendChild(img);
+}
+
+function clearImg(side) {
+  imageData[side] = null;
+  document.getElementById('file' + cap(side)).value = '';
+  const wrap = document.getElementById('preview' + cap(side) + 'Wrap');
+  wrap.innerHTML = '<div class="preview-placeholder"><div class="ph-icon">🖼️</div><div>預覽將顯示於此</div></div>';
+  document.getElementById('dl' + cap(side)).style.display = 'none';
+  document.getElementById('clr' + cap(side)).style.display = 'none';
+}
+
+// ── Watermark engine ─────────────────────────
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return {r,g,b};
+}
+
+function getWmLines() {
+  let text = document.getElementById('wmText').value.trim();
+  if (!text) text = '浮水印';
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (document.getElementById('autoDate').checked) lines.push(todayStr);
+  return lines;
+}
+
+function processImage(side) {
+  const src = imageData[side];
+  if (!src) { alert('請先上傳' + (side==='front'?'正面':'反面') + '圖片。'); return; }
+
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width  = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+
+    const mode     = document.getElementById('wmMode').value;
+    const fs       = parseInt(fontSize.value);
+    const opacity  = parseInt(wmOpacity.value) / 100;
+    const hex      = wmColorHex.value;
+    const {r,g,b}  = hexToRgb(hex);
+    const lines    = getWmLines();
+    const color    = `rgba(${r},${g},${b},${opacity})`;
+
+    ctx.save();
+    ctx.fillStyle   = color;
+    ctx.strokeStyle = `rgba(0,0,0,${opacity*0.15})`;
+    ctx.lineWidth   = 1;
+    ctx.font        = `bold ${fs}px 'Noto Sans TC', sans-serif`;
+    ctx.textBaseline = 'middle';
+
+    if (mode === 'tile' || mode === 'both') {
+      drawTile(ctx, canvas.width, canvas.height, lines, fs, color);
+    }
+    if (mode === 'single' || mode === 'both') {
+      drawSingle(ctx, canvas.width, canvas.height, lines, fs, color);
+    }
+    ctx.restore();
+
+    // Preview
+    const wrap = document.getElementById('preview' + cap(side) + 'Wrap');
+    wrap.innerHTML = '';
+    const prevCanvas = document.createElement('canvas');
+    // Scale for display
+    const maxW = wrap.parentElement.clientWidth || 640;
+    const scale = Math.min(1, maxW / canvas.width);
+    prevCanvas.width  = canvas.width  * scale;
+    prevCanvas.height = canvas.height * scale;
+    prevCanvas.style.borderRadius = '10px';
+    const pCtx = prevCanvas.getContext('2d');
+    pCtx.drawImage(canvas, 0, 0, prevCanvas.width, prevCanvas.height);
+    wrap.appendChild(prevCanvas);
+
+    // Download link
+    const fmt = document.querySelector('input[name="fmt"]:checked').value;
+    const quality = parseInt(jpgQuality.value) / 100;
+    const mimeType = fmt === 'jpg' ? 'image/jpeg' : 'image/png';
+    const ext = fmt === 'jpg' ? 'jpg' : 'png';
+    const dataUrl = canvas.toDataURL(mimeType, fmt === 'jpg' ? quality : undefined);
+
+    const dl = document.getElementById('dl' + cap(side));
+    dl.href = dataUrl;
+    dl.download = `id_watermarked_${side}_${todayStr.replace(/\//g,'-')}.${ext}`;
+    dl.style.display = 'inline-flex';
+  };
+  img.src = src;
+}
+
+function drawTile(ctx, w, h, lines, fs, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.font = `bold ${fs}px 'Noto Sans TC', sans-serif`;
+  ctx.textBaseline = 'middle';
+
+  const lineH = fs * 1.4;
+  const textBlock = lines.join('  ');
+  const measured = ctx.measureText(textBlock).width;
+  const diagLen = Math.sqrt(w*w + h*h);
+  const stepX = measured + fs * 3;
+  const stepY = lineH * (lines.length + 1.5);
+
+  ctx.translate(w/2, h/2);
+  ctx.rotate(-Math.PI / 5);  // ~36 degrees
+
+  const cols = Math.ceil(diagLen / stepX) + 2;
+  const rows = Math.ceil(diagLen / stepY) + 2;
+
+  for (let row = -rows; row <= rows; row++) {
+    for (let col = -cols; col <= cols; col++) {
+      const x = col * stepX + (row % 2 === 0 ? 0 : stepX / 2);
+      const y = row * stepY;
+      lines.forEach((line, i) => {
+        ctx.fillText(line, x, y + i * lineH);
+      });
+    }
+  }
+  ctx.restore();
+}
+
+function drawSingle(ctx, w, h, lines, fs, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.font = `bold ${fs}px 'Noto Sans TC', sans-serif`;
+  ctx.textBaseline = 'middle';
+
+  const lineH = fs * 1.4;
+  const totalH = lineH * lines.length;
+  const maxW = Math.max(...lines.map(l => ctx.measureText(l).width));
+
+  const margin = fs;
+  const posMap = {
+    tl: [margin, margin + totalH/2],
+    tc: [w/2 - maxW/2, margin + totalH/2],
+    tr: [w - maxW - margin, margin + totalH/2],
+    ml: [margin, h/2],
+    mc: [w/2 - maxW/2, h/2],
+    mr: [w - maxW - margin, h/2],
+    bl: [margin, h - margin - totalH/2],
+    bc: [w/2 - maxW/2, h - margin - totalH/2],
+    br: [w - maxW - margin, h - margin - totalH/2],
+  };
+  const [bx, by] = posMap[selectedPos] || posMap['mc'];
+
+  lines.forEach((line, i) => {
+    const y = by - totalH/2 + i * lineH + lineH/2;
+    ctx.fillText(line, bx, y);
+  });
+  ctx.restore();
+}
+</script>
+</body>
+</html>
